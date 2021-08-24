@@ -1,5 +1,6 @@
+#!/usr/bin/python3
+
 import heapq
-# import json
 import sys
 
 from models.fpl_player import FPLPlayer
@@ -8,50 +9,26 @@ from models.google_sheets import GoogleSheets
 from models.heapnode import Node
 
 
-def get_list_of_players(fpl_session, h2h_league_fixtures, list_of_players):
-    for h2h_fixture in h2h_league_fixtures:
-        player_1 = FPLPlayer()
-        player_1.populate_player_info(h2h_fixture, "entry_1")
-        player_1.set_gameweek(gameweek=fpl_session.get_current_gameweek())
-
-        player_2 = FPLPlayer()
-        player_2.populate_player_info(h2h_fixture, "entry_2")
-        player_2.set_gameweek(gameweek=fpl_session.get_current_gameweek())
-
-        print('%32s VS %s' % (player_1, player_2))
-
-        # print("{0}".format(json.dumps(h2h_fixture, indent=4)))
-        list_of_players.append(player_1)
-        list_of_players.append(player_2)
-
-
-def update_google_gameweek_sheet(list_of_players, gsheets):
-    for player in list_of_players:
+def update_google_gameweek_sheet(gameweek, player_map, gsheets):
+    print("Updating gameweek {0} points".format(gameweek))
+    for _, player in player_map.items():
         pname = player.get_name()
+        ppoints = player.get_points(week=gameweek)
         cell = gsheets.search_player(pname)
-        # print("Found {0} in [{1},{2}]".format(pname, cell.row, cell.col))
-        gameweek = player.get_gameweek()
-        print("Updating gameweek points for {0}".format(player.get_name()))
-        gsheets.update_player_score(cell.row, cell.col + gameweek,
-                                    player.get_points())
+        print("{0}:{1}".format(pname, ppoints))
+        gsheets.update_player_score(cell.row, cell.col + gameweek, ppoints)
 
 
-def update_google_rank_sheet(list_of_players, gsheets):
+def update_google_rank_sheet(player_map, gsheets):
     heap = []
 
-    for player in list_of_players:
-        pname = player.get_name()
-        cell = gsheets.search_player(pname)
-        print("Found {0} in [{1},{2}]".format(pname, cell.row, cell.col))
+    for _, player in player_map.items():
+        cell = gsheets.search_player(player.get_name())
+        gsheets.update_player_score(cell.row, cell.col + 1, player.get_total_win())
+        gsheets.update_player_score(cell.row, cell.col + 2, player.get_total_loss())
+        gsheets.update_player_score(cell.row, cell.col + 3, player.get_total_draw())
+        gsheets.update_player_score(cell.row, cell.col + 4, player.get_total_h2h_points())
 
-        if player.get_win():
-            gsheets.update_player_score(cell.row, cell.col + 1, player.get_win())
-        elif player.get_loss():
-            gsheets.update_player_score(cell.row, cell.col + 2, player.get_loss())
-        elif player.get_draw():
-            gsheets.update_player_score(cell.row, cell.col + 3, player.get_draw())
-
-        gsheets.update_player_score(cell.row, cell.col + 4, player.get_total_points())
         heapq.heappush(heap, Node(player))
 
     print("Rank:")
@@ -67,10 +44,42 @@ def update_google_rank_sheet(list_of_players, gsheets):
             # Highlight the top 3
             gsheets.highlight_row(cell.row, "yellow")
         if not heap:
-            # Highlight the last one (they pay double)
+            # Highlight the last one (pays double)
             gsheets.highlight_row(cell.row, "red")
 
         num += 1
+
+def create_players(h2h_league_fixtures):
+    player_map = dict()
+
+    for week, fixtures in h2h_league_fixtures.items():
+        for h2h_league_fixture in fixtures:
+            e1 = 'entry_1'
+            e2 = 'entry_2'
+            entry_1_id = h2h_league_fixture[e1 + '_entry']
+            entry_2_id = h2h_league_fixture[e2 + '_entry']
+
+            # AVERAGE player is set to None
+            if entry_1_id is None:
+                entry_1_id = 'AVERAGE'
+            elif entry_2_id is None:
+                entry_2_id = 'AVERAGE'
+
+            if entry_1_id not in player_map:
+                player = FPLPlayer(id=entry_1_id,
+                    name=h2h_league_fixture[e1 + '_player_name'],
+                    team_name=h2h_league_fixture[e1 + '_name'])
+                player_map[entry_1_id] = player
+            if entry_2_id not in player_map:
+                player = FPLPlayer(id=entry_2_id,
+                    name=h2h_league_fixture[e2 + '_player_name'],
+                    team_name=h2h_league_fixture[e2 + '_name'])
+                player_map[entry_2_id] = player
+
+            player_map[entry_1_id].populate_player_stats(week, h2h_league_fixture, e1)
+            player_map[entry_2_id].populate_player_stats(week, h2h_league_fixture, e2)
+
+    return player_map
 
 
 def main(argv):
@@ -84,12 +93,16 @@ def main(argv):
     h2h_league, h2h_league_fixtures = fpl_session.fpl_get_h2h_league_fixtures()
     print("%30s: %s\n" % ('Fantasy Premier League', h2h_league))
 
-    list_of_players = []
-    get_list_of_players(fpl_session, h2h_league_fixtures, list_of_players)
-    update_google_gameweek_sheet(list_of_players, gsheets)
-    # Update Win/Loss/Draw Table
+    player_map = create_players(h2h_league_fixtures)
+    #print("Number of players: ", len(player_map))
+    #for id, player in player_map.items():
+    #    print(id, ":", player)
+
+    update_google_gameweek_sheet(fpl_session.get_current_gameweek(),
+                                 player_map, gsheets)
+    # Update Rank Table
     gsheets.update_worksheet_num(num=2)
-    update_google_rank_sheet(list_of_players, gsheets)
+    update_google_rank_sheet(player_map, gsheets)
 
 
 if __name__ == "__main__":

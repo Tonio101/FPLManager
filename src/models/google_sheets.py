@@ -32,6 +32,7 @@ class GoogleSheets():
 
         format_cell_range(self.sheet_instance, str(row), fmt)
 
+
     def highlight_row(self, row, row_color="white"):
         r_color = color(1, 1, 1) # Background color default is white
         text_color = color(0, 0, 0) # Text color default is black

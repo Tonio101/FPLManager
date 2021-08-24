@@ -8,7 +8,7 @@ class Node(object):
         return f'Node value: {self.val}'
 
     def __lt__(self, other):
-        if self.val.get_total_points() == other.val.get_total_points():
-            return other.val.get_points() < self.val.get_points()
+        if self.val.get_total_h2h_points() == other.val.get_total_h2h_points():
+            return other.val.get_total_points() < self.val.get_total_points()
 
-        return other.val.get_total_points() < self.val.get_total_points()
+        return other.val.get_total_h2h_points() < self.val.get_total_h2h_points()
