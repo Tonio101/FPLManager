@@ -1,4 +1,5 @@
 import gspread
+from gspread_formatting.batch_update_requests import format_cell_range
 import pandas as pd
 
 from oauth2client.service_account import ServiceAccountCredentials
@@ -21,32 +22,50 @@ class GoogleSheets():
     def update_player_score(self, row, col, value):
         return self.sheet_instance.update_cell(row, col, value)
 
+    def update_players_score(self, cell_list):
+        return self.sheet_instance.update_cells(cell_list)
+
     def update_worksheet_num(self, num):
         self.sheet_instance = self.sheet.get_worksheet(num)
 
     def reset_row_highlight(self, row):
-        fmt = cellFormat(
-            backgroundColor=color(1, 1, 1),
-            textFormat=textFormat(bold=False, foregroundColor=color(0, 0, 0))
+        fmt = CellFormat(
+            backgroundColor=Color(1, 1, 1),
+            textFormat=TextFormat(bold=False, foregroundColor=Color(0, 0, 0))
         )
 
         format_cell_range(self.sheet_instance, str(row), fmt)
 
 
     def highlight_row(self, row, row_color="white"):
-        r_color = color(1, 1, 1) # Background color default is white
-        text_color = color(0, 0, 0) # Text color default is black
+        r_color = Color(1, 1, 1) # Background color default is white
+        text_color = Color(0, 0, 0) # Text color default is black
 
         if "red" in row_color:
-            r_color = color(1, 0, 0)
-            text_color = color(1, 1, 1)
+            r_color = Color(1, 0, 0)
+            text_color = Color(1, 1, 1)
         elif "yellow" in row_color:
-            r_color = color(1, 1, 0)
+            r_color = Color(1, 1, 0)
 
-        fmt = cellFormat(
+        fmt = CellFormat(
             backgroundColor=r_color,
-            textFormat=textFormat(bold=True, foregroundColor=text_color)
+            textFormat=TextFormat(bold=True, foregroundColor=text_color)
             #horizontalAlignment='CENTER'
         )
 
-        format_cell_range(self.sheet_instance, str(row), fmt)
+        format_cell_range(self.sheet_instance, str(row), fmt)    
+
+
+    def highlight_cell(self, row, col, cell_color="white"):
+        cell_color = Color(1, 1, 1)
+        text_color = Color(0, 0, 0)
+
+        if "yellow" in cell_color:
+            cell_color = Color(1, 1, 0)
+
+        fmt = CellFormat(
+            backgroundColor=cell_color,
+            textFormat=TextFormat(bold=False, foregroundColor=text_color)
+        )
+
+        format_cell_range(self.sheet_instance, "{0}:{1}".format(row, col), fmt)

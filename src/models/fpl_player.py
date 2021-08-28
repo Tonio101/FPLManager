@@ -33,6 +33,9 @@ class FPLPlayer():
         self.points[week] = (h2h_fixture[entry + '_points'])
         self.total_points += self.points[week]
 
+    def get_id(self):
+        return self.id
+
     def get_name(self):
         return self.name
 
@@ -41,6 +44,9 @@ class FPLPlayer():
 
     def get_points(self, week):
         return self.points[week]
+
+    def get_win(self, week):
+        return self.win[week]
 
     def get_total_win(self):
         return sum(v for v in self.win.values())

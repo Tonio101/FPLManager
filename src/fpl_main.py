@@ -1,43 +1,59 @@
 #!/usr/bin/python3
 
+import argparse
 import heapq
+import json
 import sys
 
+from gspread.models import Cell
 from models.fpl_player import FPLPlayer
 from models.fpl_session import FPLSession
 from models.google_sheets import GoogleSheets
 from models.heapnode import Node
+from time import sleep
 
 
 def update_google_gameweek_sheet(gameweek, player_map, gsheets):
     print("Updating gameweek {0} points".format(gameweek))
+
+    player_cells = []
     for _, player in player_map.items():
         pname = player.get_name()
-        ppoints = player.get_points(week=gameweek)
+        gw_points = player.get_points(week=gameweek)
         cell = gsheets.search_player(pname)
-        print("{0}:{1}".format(pname, ppoints))
-        gsheets.update_player_score(cell.row, cell.col + gameweek, ppoints)
+        print("{0}:{1}".format(pname, gw_points))
+        player_cells.append(Cell(row=cell.row, col=cell.col + gameweek, value=gw_points))
+    
+    gsheets.update_players_score(player_cells)
 
 
 def update_google_rank_sheet(player_map, gsheets):
     heap = []
+    player_cell_map = dict()
 
+    player_cells = []
     for _, player in player_map.items():
         cell = gsheets.search_player(player.get_name())
-        gsheets.update_player_score(cell.row, cell.col + 1, player.get_total_win())
-        gsheets.update_player_score(cell.row, cell.col + 2, player.get_total_loss())
-        gsheets.update_player_score(cell.row, cell.col + 3, player.get_total_draw())
-        gsheets.update_player_score(cell.row, cell.col + 4, player.get_total_h2h_points())
+        player_cell_map[player.get_id()] = cell
 
+        player_cells.append(Cell(row=cell.row, col=cell.col + 1, value=player.get_total_win()))
+        player_cells.append(Cell(row=cell.row, col=cell.col + 2, value=player.get_total_loss()))
+        player_cells.append(Cell(row=cell.row, col=cell.col + 3, value=player.get_total_draw()))
+        player_cells.append(Cell(row=cell.row, col=cell.col + 4, value=player.get_total_h2h_points()))
         heapq.heappush(heap, Node(player))
 
+    gsheets.update_players_score(player_cells)
+    # Google sheets API rate limit
+    #sleep(60)
+
+    player_cells = []
     print("Rank:")
     num = 1
     while heap:
         node = heapq.heappop(heap).val
         print("{0}: {1}".format(num, node.get_name()))
-        cell = gsheets.search_player(node.get_name())
-        gsheets.update_player_score(cell.row, cell.col + 5, num)
+        cell = player_cell_map[node.get_id()]
+        player_cells.append(Cell(row=cell.row, col=cell.col + 5, value=num))
         gsheets.reset_row_highlight(cell.row)
 
         if num < 4:
@@ -48,6 +64,9 @@ def update_google_rank_sheet(player_map, gsheets):
             gsheets.highlight_row(cell.row, "red")
 
         num += 1
+    
+    gsheets.update_players_score(player_cells)
+
 
 def create_players(h2h_league_fixtures):
     player_map = dict()
@@ -83,9 +102,22 @@ def create_players(h2h_league_fixtures):
 
 
 def main(argv):
-    # TODO add command line arguments
-    creds_file = '/home/antonio/my-project-33107-c176b4ff01ad.json'
-    gsheets_fname = 'Fantasy Premier League - 21/22'
+
+    usage = ("{0} --config <file> ").format(__file__)
+    description = 'Fantasy Premier League Manager'
+    parser = argparse.ArgumentParser(usage=usage, description=description)
+    parser.add_argument("-c", "--config", help="Config file", required=True)
+    parser.add_argument("-g", "--gameweek", help="Gameweek", action='store_true', required=False)
+    parser.add_argument("-r", "--rank", help="Rank", action='store_true', required=False)
+    parser.set_defaults(gameweek=False, rank=False)
+
+    args = parser.parse_args()
+
+    with open(args.config, encoding='UTF-8') as file:
+        data = json.load(file)
+
+    creds_file = data['creds_file']
+    gsheets_fname = data['google_sheets_file_name']
 
     fpl_session = FPLSession()
     gsheets = GoogleSheets(creds_fname=creds_file, fname=gsheets_fname)
@@ -98,11 +130,13 @@ def main(argv):
     #for id, player in player_map.items():
     #    print(id, ":", player)
 
-    update_google_gameweek_sheet(fpl_session.get_current_gameweek(),
-                                 player_map, gsheets)
+    if args.gameweek:
+        update_google_gameweek_sheet(fpl_session.get_current_gameweek(),
+                                     player_map, gsheets)
     # Update Rank Table
-    gsheets.update_worksheet_num(num=2)
-    update_google_rank_sheet(player_map, gsheets)
+    if args.rank:
+        gsheets.update_worksheet_num(num=2)
+        update_google_rank_sheet(player_map, gsheets)
 
 
 if __name__ == "__main__":
