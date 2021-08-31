@@ -1,33 +1,51 @@
 #!/usr/bin/python3
-
+"""
+Print statistics about private head-to-head league.
+"""
 import argparse
 import heapq
 import json
 import sys
 
 from gspread.models import Cell
+from models.logger import get_logger
 from models.fpl_player import FPLPlayer
 from models.fpl_session import FPLSession
 from models.google_sheets import GoogleSheets
 from models.heapnode import Node
-from time import sleep
+
+log = get_logger(__name__)
 
 
 def update_google_gameweek_sheet(gameweek, player_map, gsheets):
-    print("Updating gameweek {0} points".format(gameweek))
+    """
+    Update Head-to-Head player points on Google sheets.
+
+    params:
+        - player_map - Head-to-Head player map.
+        - gsheets - Google sheets instance.
+    """
+    log.info("Updating gameweek {0} points".format(gameweek))
 
     player_cells = []
     for _, player in player_map.items():
         pname = player.get_name()
         gw_points = player.get_points(week=gameweek)
         cell = gsheets.search_player(pname)
-        print("{0}:{1}".format(pname, gw_points))
+        log.info("{0}:{1}".format(pname, gw_points))
         player_cells.append(Cell(row=cell.row, col=cell.col + gameweek, value=gw_points))
     
     gsheets.update_players_score(player_cells)
 
 
 def update_google_rank_sheet(player_map, gsheets):
+    """
+    Update Head-to-Head player rank on Google sheets.
+
+    params:
+        - player_map - Head-to-Head player map.
+        - gsheets - Google sheets instance.
+    """
     heap = []
     player_cell_map = dict()
 
@@ -43,15 +61,13 @@ def update_google_rank_sheet(player_map, gsheets):
         heapq.heappush(heap, Node(player))
 
     gsheets.update_players_score(player_cells)
-    # Google sheets API rate limit
-    #sleep(60)
 
     player_cells = []
-    print("Rank:")
+    log.info("Rank:")
     num = 1
     while heap:
         node = heapq.heappop(heap).val
-        print("{0}: {1}".format(num, node.get_name()))
+        log.info("{0}: {1}".format(num, node.get_name()))
         cell = player_cell_map[node.get_id()]
         player_cells.append(Cell(row=cell.row, col=cell.col + 5, value=num))
         gsheets.reset_row_highlight(cell.row)
@@ -64,11 +80,20 @@ def update_google_rank_sheet(player_map, gsheets):
             gsheets.highlight_row(cell.row, "red")
 
         num += 1
-    
+
     gsheets.update_players_score(player_cells)
 
 
 def create_players(h2h_league_fixtures):
+    """
+    Create Head-to-Head league players.
+
+    params:
+        - h2h_league_fixtures - Head-to-Head league fixture map.
+
+    output:
+        - player_map - Map containing the participating players.
+    """
     player_map = dict()
 
     for week, fixtures in h2h_league_fixtures.items():
