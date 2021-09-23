@@ -74,7 +74,7 @@ class FPLSession():
         return False
 
     def marked_gameweek_updated(self):
-        with open(self.gameweeks_db, 'w') as db:
+        with open(self.gameweeks_db, 'a') as db:
             db.write(str(self.curr_gameweek))
 
     def is_current_gameweek_completed(self):
