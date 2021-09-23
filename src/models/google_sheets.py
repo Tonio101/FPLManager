@@ -1,17 +1,21 @@
 import gspread
-from gspread_formatting.batch_update_requests import format_cell_range
-import pandas as pd
 
+from gspread_formatting.batch_update_requests import format_cell_range
 from oauth2client.service_account import ServiceAccountCredentials
-from gspread_formatting import *
+from gspread_formatting import CellFormat, Color, TextFormat
 
 SCOPE = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
 
+
 class GoogleSheets():
+    """
+    Google Sheets API object.
+    """
 
     def __init__(self, creds_fname, fname, worksheet_num=0):
-        creds = ServiceAccountCredentials.from_json_keyfile_name(creds_fname, SCOPE)
+        creds = ServiceAccountCredentials.from_json_keyfile_name(creds_fname,
+                                                                 SCOPE)
         client = gspread.authorize(creds)
         self.sheet = client.open(fname)
         self.sheet_instance = self.sheet.get_worksheet(worksheet_num)
@@ -36,10 +40,9 @@ class GoogleSheets():
 
         format_cell_range(self.sheet_instance, str(row), fmt)
 
-
     def highlight_row(self, row, row_color="white"):
-        r_color = Color(1, 1, 1) # Background color default is white
-        text_color = Color(0, 0, 0) # Text color default is black
+        r_color = Color(1, 1, 1)  # Background color default is white
+        text_color = Color(0, 0, 0)  # Text color default is black
 
         if "red" in row_color:
             r_color = Color(1, 0, 0)
@@ -50,11 +53,10 @@ class GoogleSheets():
         fmt = CellFormat(
             backgroundColor=r_color,
             textFormat=TextFormat(bold=True, foregroundColor=text_color)
-            #horizontalAlignment='CENTER'
+            # horizontalAlignment='CENTER'
         )
 
         format_cell_range(self.sheet_instance, str(row), fmt)    
-
 
     def highlight_cell(self, row, col, cell_color="white"):
         cell_color = Color(1, 1, 1)

@@ -1,7 +1,4 @@
 #!/usr/bin/python3
-"""
-Print statistics about private head-to-head league.
-"""
 import argparse
 import heapq
 import json
@@ -33,8 +30,9 @@ def update_google_gameweek_sheet(gameweek, player_map, gsheets):
         gw_points = player.get_points(week=gameweek)
         cell = gsheets.search_player(pname)
         log.info("{0}:{1}".format(pname, gw_points))
-        player_cells.append(Cell(row=cell.row, col=cell.col + gameweek, value=gw_points))
-    
+        player_cells.append(Cell(row=cell.row, col=cell.col + gameweek,
+                            value=gw_points))
+
     gsheets.update_players_score(player_cells)
 
 
@@ -54,10 +52,14 @@ def update_google_rank_sheet(player_map, gsheets):
         cell = gsheets.search_player(player.get_name())
         player_cell_map[player.get_id()] = cell
 
-        player_cells.append(Cell(row=cell.row, col=cell.col + 1, value=player.get_total_win()))
-        player_cells.append(Cell(row=cell.row, col=cell.col + 2, value=player.get_total_loss()))
-        player_cells.append(Cell(row=cell.row, col=cell.col + 3, value=player.get_total_draw()))
-        player_cells.append(Cell(row=cell.row, col=cell.col + 4, value=player.get_total_h2h_points()))
+        player_cells.append(Cell(row=cell.row, col=cell.col + 1,
+                            value=player.get_total_win()))
+        player_cells.append(Cell(row=cell.row, col=cell.col + 2,
+                            value=player.get_total_loss()))
+        player_cells.append(Cell(row=cell.row, col=cell.col + 3,
+                            value=player.get_total_draw()))
+        player_cells.append(Cell(row=cell.row, col=cell.col + 4,
+                            value=player.get_total_h2h_points()))
         heapq.heappush(heap, Node(player))
 
     gsheets.update_players_score(player_cells)
@@ -98,10 +100,10 @@ def create_players(h2h_league_fixtures):
 
     for week, fixtures in h2h_league_fixtures.items():
         for h2h_league_fixture in fixtures:
-            e1 = 'entry_1'
-            e2 = 'entry_2'
-            entry_1_id = h2h_league_fixture[e1 + '_entry']
-            entry_2_id = h2h_league_fixture[e2 + '_entry']
+            e_1 = 'entry_1'
+            e_2 = 'entry_2'
+            entry_1_id = h2h_league_fixture[e_1 + '_entry']
+            entry_2_id = h2h_league_fixture[e_2 + '_entry']
 
             # AVERAGE player is set to None
             if entry_1_id is None:
@@ -111,17 +113,21 @@ def create_players(h2h_league_fixtures):
 
             if entry_1_id not in player_map:
                 player = FPLPlayer(id=entry_1_id,
-                    name=h2h_league_fixture[e1 + '_player_name'],
-                    team_name=h2h_league_fixture[e1 + '_name'])
+                                   name=h2h_league_fixture[e_1 + '_player_name'],
+                                   team_name=h2h_league_fixture[e_1 + '_name'])
                 player_map[entry_1_id] = player
             if entry_2_id not in player_map:
                 player = FPLPlayer(id=entry_2_id,
-                    name=h2h_league_fixture[e2 + '_player_name'],
-                    team_name=h2h_league_fixture[e2 + '_name'])
+                                   name=h2h_league_fixture[e_2 + '_player_name'],
+                                   team_name=h2h_league_fixture[e_2 + '_name'])
                 player_map[entry_2_id] = player
 
-            player_map[entry_1_id].populate_player_stats(week, h2h_league_fixture, e1)
-            player_map[entry_2_id].populate_player_stats(week, h2h_league_fixture, e2)
+            player_map[entry_1_id].populate_player_stats(week,
+                                                         h2h_league_fixture,
+                                                         e_1)
+            player_map[entry_2_id].populate_player_stats(week,
+                                                         h2h_league_fixture,
+                                                         e_2)
 
     return player_map
 
@@ -131,10 +137,15 @@ def main(argv):
     usage = ("{0} --config <file> ").format(__file__)
     description = 'Fantasy Premier League Manager'
     parser = argparse.ArgumentParser(usage=usage, description=description)
-    parser.add_argument("-c", "--config", help="Config file", required=True)
-    parser.add_argument("-g", "--gameweek", help="Gameweek", action='store_true', required=False)
-    parser.add_argument("-r", "--rank", help="Rank", action='store_true', required=False)
-    parser.set_defaults(gameweek=False, rank=False)
+    parser.add_argument("-c", "--config", help="Config file",
+                        required=True)
+    parser.add_argument("-g", "--gameweek", help="Update gameweek points",
+                        action='store_true', required=False)
+    parser.add_argument("-r", "--rank", help="Update rank standings",
+                        action='store_true', required=False)
+    parser.add_argument("-p", "--playerconfig", help="Player configuration",
+                        action='store_true', required=False)
+    parser.set_defaults(gameweek=False, rank=False, playerconfig=False)
 
     args = parser.parse_args()
 
@@ -151,9 +162,10 @@ def main(argv):
     print("%30s: %s\n" % ('Fantasy Premier League', h2h_league))
 
     player_map = create_players(h2h_league_fixtures)
-    #print("Number of players: ", len(player_map))
-    #for id, player in player_map.items():
-    #    print(id, ":", player)
+
+    log.debug("Number of players: ", len(player_map))
+    for player_id, player in player_map.items():
+        log.debug(player_id, ":", player)
 
     if args.gameweek:
         update_google_gameweek_sheet(fpl_session.get_current_gameweek(),

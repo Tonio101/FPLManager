@@ -1,9 +1,7 @@
-"""
-
-"""
-from os import name
-
 class FPLPlayer():
+    """
+    Object representation for an FPL Player
+    """
 
     def __init__(self, id, name, team_name):
         self.id = id
@@ -13,7 +11,7 @@ class FPLPlayer():
         self.draw = dict()
         self.loss = dict()
         self.points = dict()
-        self.total_points = 0 # Head-to-Head total points
+        self.total_points = 0  # Head-to-Head total points
         self.is_knockout = False
         self.winner = None
 
@@ -56,7 +54,7 @@ class FPLPlayer():
 
     def get_total_draw(self):
         return sum(v for v in self.draw.values())
-    
+
     def get_total_h2h_points(self):
         return ((self.get_total_win() * 3) + self.get_total_draw())
 
@@ -81,4 +79,3 @@ class FPLPlayer():
                       p=self.points,
                       t=self.total_points)
         return to_str
-
