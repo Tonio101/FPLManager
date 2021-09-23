@@ -1,4 +1,5 @@
 {
+    "h2h_league_id": 123456,
     "creds_file": "<path_to_credentials_json_file>",
     "google_sheets_file_name": "<google_sheet_name>"
 }

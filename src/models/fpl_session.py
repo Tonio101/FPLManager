@@ -3,17 +3,20 @@ import asyncio
 
 from fpl import FPL
 
-LEAGUE_ID = 255497
 
 class FPLSession():
+    """
+    Wrapper class for an FPL session.
+    """
 
-    def __init__(self):
+    def __init__(self, h2h_league_id):
         self.fpl_session = None
         self.user = None
         self.h2h_league = None
         self.h2h_league_fixtures = None
         self.curr_gameweek = 0
         self.next_gameweek = 0
+        self.h2h_league_id = h2h_league_id
 
         asyncio.run(self.fpl_get_session())
 
@@ -22,7 +25,6 @@ class FPLSession():
 
     def set_current_gameweek(self):
         for gw in self.gameweeks:
-            #print("{0}".format(vars(gw)))
             if gw and gw.is_current:
                 self.curr_gameweek = gw.id
             if gw and gw.is_next:
@@ -33,11 +35,9 @@ class FPLSession():
             self.fpl_session = FPL(session)
             await self.fpl_session.login()
             self.user = await self.fpl_session.get_user()
-            #my_team = await user.get_team()
             self.gameweeks = await self.fpl_session.get_gameweeks()
             self.set_current_gameweek()
-            self.h2h_league = await self.fpl_session.get_h2h_league(LEAGUE_ID)
-            #self.h2h_league_fixtures = await self.h2h_league.get_fixtures(gameweek=self.curr_gameweek)
+            self.h2h_league = await self.fpl_session.get_h2h_league(self.h2h_league_id)
             self.h2h_league_all_fixtures = await self.h2h_league.get_fixtures()
 
     def fpl_get_h2h_league_fixtures(self):

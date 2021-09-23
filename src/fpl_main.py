@@ -155,7 +155,7 @@ def main(argv):
     creds_file = data['creds_file']
     gsheets_fname = data['google_sheets_file_name']
 
-    fpl_session = FPLSession()
+    fpl_session = FPLSession(h2h_league_id=data['h2h_league_id'])
     gsheets = GoogleSheets(creds_fname=creds_file, fname=gsheets_fname)
 
     h2h_league, h2h_league_fixtures = fpl_session.fpl_get_h2h_league_fixtures()
