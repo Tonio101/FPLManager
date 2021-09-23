@@ -1,17 +1,18 @@
 #!/usr/bin/python3
+
 import argparse
 import heapq
 import json
 import sys
 
 from gspread.models import Cell
-from models.logger import get_logger
+from models.logger import Logger
 from models.fpl_player import FPLPlayer
 from models.fpl_session import FPLSession
 from models.google_sheets import GoogleSheets
 from models.heapnode import Node
 
-log = get_logger(__name__)
+log = Logger.getInstance().getLogger()
 
 
 def update_google_gameweek_sheet(gameweek, player_map, gsheets):
@@ -34,6 +35,7 @@ def update_google_gameweek_sheet(gameweek, player_map, gsheets):
                             value=gw_points))
 
     gsheets.update_players_score(player_cells)
+    return True
 
 
 def update_google_rank_sheet(player_map, gsheets):
@@ -84,6 +86,7 @@ def update_google_rank_sheet(player_map, gsheets):
         num += 1
 
     gsheets.update_players_score(player_cells)
+    return True
 
 
 def create_players(h2h_league_fixtures):
@@ -145,9 +148,15 @@ def main(argv):
                         action='store_true', required=False)
     parser.add_argument("-p", "--playerconfig", help="Player configuration",
                         action='store_true', required=False)
-    parser.set_defaults(gameweek=False, rank=False, playerconfig=False)
+    parser.add_argument("-d", "--debug", help="Debug", action='store_true',
+                        required=False)
+    parser.set_defaults(gameweek=False, rank=False, playerconfig=False,
+                        debug=False)
 
     args = parser.parse_args()
+
+    if args.debug:
+        Logger.getInstance().enableDebug()
 
     with open(args.config, encoding='UTF-8') as file:
         data = json.load(file)
@@ -156,6 +165,24 @@ def main(argv):
     gsheets_fname = data['google_sheets_file_name']
 
     fpl_session = FPLSession(h2h_league_id=data['h2h_league_id'])
+
+    if fpl_session.has_gameweek_been_updated():
+        log.info(
+            ("Gameweek points and rank have alreaady been "
+             "updated for gameweek: {0}").format(
+                 fpl_session.get_current_gameweek()
+             )
+        )
+        sys.exit(0)
+
+    if not fpl_session.is_current_gameweek_completed():
+        log.info(
+            ("Gameweek {0} data is not checked yet.").format(
+                fpl_session.get_current_gameweek())
+        )
+        sys.exit(0)
+
+    log.info("Current gameweek data is checked, update Google sheets")
     gsheets = GoogleSheets(creds_fname=creds_file, fname=gsheets_fname)
 
     h2h_league, h2h_league_fixtures = fpl_session.fpl_get_h2h_league_fixtures()
@@ -163,17 +190,23 @@ def main(argv):
 
     player_map = create_players(h2h_league_fixtures)
 
-    log.debug("Number of players: ", len(player_map))
+    log.debug("Number of players: {0}".format(len(player_map)))
     for player_id, player in player_map.items():
-        log.debug(player_id, ":", player)
+        log.debug("{0} : {1}".format(player_id, player))
+
+    gameweek_updated = False
+    gameweek_rank_updated = False
 
     if args.gameweek:
-        update_google_gameweek_sheet(fpl_session.get_current_gameweek(),
-                                     player_map, gsheets)
+        gameweek_updated = update_google_gameweek_sheet(
+            fpl_session.get_current_gameweek(), player_map, gsheets)
     # Update Rank Table
     if args.rank:
         gsheets.update_worksheet_num(num=2)
-        update_google_rank_sheet(player_map, gsheets)
+        gameweek_rank_updated = update_google_rank_sheet(player_map, gsheets)
+
+    if gameweek_updated and gameweek_rank_updated:
+        fpl_session.marked_gameweek_updated()
 
 
 if __name__ == "__main__":

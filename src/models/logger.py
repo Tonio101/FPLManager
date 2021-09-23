@@ -1,32 +1,46 @@
-"""
-Logger wrapper
-"""
 import logging
 
 from logging.handlers import RotatingFileHandler
 
-FILE = ('/tmp/fpl_manager.log')
+FILE = '/tmp/fpl_manager.log'
 FILE_MAXSIZE = 10 * 1024 * 1024  # 10MB
 FILE_BACKUP_CNT = 2
-LOG_FORMAT = ('%(asctime)s:%(module)s:%(levelname)s - %(message)s')
-LOG_TIME_FORMAT = ('%Y-%m-%d %H:%M:%S')
+LOG_FORMAT = '%(asctime)s:%(module)s:%(levelname)s - %(message)s'
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
-def get_logger(name, fname=FILE, max_bytes=FILE_MAXSIZE,
-               backup_count=FILE_BACKUP_CNT):
-    """
-    Configure Logger
-    """
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+class SingletonType(type):
+    _instances = {}
 
-    # String format log
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(LOG_FORMAT, LOG_TIME_FORMAT)
-    handler.setFormatter(formatter)
+    def getInstance(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = \
+                    super(SingletonType, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
 
-    logger.addHandler(handler)
-    rotate_file_handler = RotatingFileHandler(fname, max_bytes, backup_count)
 
-    logger.addHandler(rotate_file_handler)
-    return logger
+class Logger(object, metaclass=SingletonType):
+    # __metaclass__ = SingletonType   # python 2 Style
+
+    def __init__(self, name='FPL', fname=FILE,
+                 maxBytes=FILE_MAXSIZE, backupCount=FILE_BACKUP_CNT):
+
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(logging.INFO)
+
+        # String format log
+        handler = logging.StreamHandler()
+
+        formatter = logging.Formatter(LOG_FORMAT, DATE_FORMAT)
+        handler.setFormatter(formatter)
+
+        self.logger.addHandler(handler)
+        rotate_file_handler = RotatingFileHandler(fname, maxBytes, backupCount)
+
+        self.logger.addHandler(rotate_file_handler)
+
+    def enableDebug(self):
+        self.logger.setLevel(logging.DEBUG)
+
+    def getLogger(self):
+        return self.logger
