@@ -206,6 +206,13 @@ def main(argv):
         gameweek_rank_updated = update_google_rank_sheet(player_map, gsheets)
 
     if gameweek_updated and gameweek_rank_updated:
+        log.info(
+            ("Gameweek {0} points and "
+             "rank successfully updated.").format(
+                 fpl_session.get_current_gameweek()
+            )
+        )
+
         fpl_session.marked_gameweek_updated()
 
 
