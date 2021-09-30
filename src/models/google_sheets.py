@@ -32,6 +32,11 @@ class GoogleSheets():
     def update_worksheet_num(self, num):
         self.sheet_instance = self.sheet.get_worksheet(num)
 
+    def update_rank_table(self, start_cell='A2', data=[]):
+        if len(data) == 0:
+            return
+        self.sheet_instance.update(start_cell, data)
+
     def reset_row_highlight(self, row):
         fmt = CellFormat(
             backgroundColor=Color(1, 1, 1),

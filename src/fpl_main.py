@@ -20,6 +20,7 @@ def update_google_gameweek_sheet(gameweek, player_map, gsheets):
     Update Head-to-Head player points on Google sheets.
 
     params:
+        - gameweek - Current gameweek.
         - player_map - Head-to-Head player map.
         - gsheets - Google sheets instance.
     """
@@ -38,55 +39,94 @@ def update_google_gameweek_sheet(gameweek, player_map, gsheets):
     return True
 
 
-def update_google_rank_sheet(player_map, gsheets):
+def update_google_rank_sheet(gameweek, player_map, gsheets):
     """
     Update Head-to-Head player rank on Google sheets.
 
     params:
+        - gameweek - Current gameweek.
         - player_map - Head-to-Head player map.
         - gsheets - Google sheets instance.
     """
     heap = []
-    player_cell_map = dict()
+    data = []
 
-    player_cells = []
+    log.info("Updating player rank {0}".format(gameweek))
+
     for _, player in player_map.items():
-        cell = gsheets.search_player(player.get_name())
-        player_cell_map[player.get_id()] = cell
-
-        player_cells.append(Cell(row=cell.row, col=cell.col + 1,
-                            value=player.get_total_win()))
-        player_cells.append(Cell(row=cell.row, col=cell.col + 2,
-                            value=player.get_total_loss()))
-        player_cells.append(Cell(row=cell.row, col=cell.col + 3,
-                            value=player.get_total_draw()))
-        player_cells.append(Cell(row=cell.row, col=cell.col + 4,
-                            value=player.get_total_h2h_points()))
         heapq.heappush(heap, Node(player))
 
-    gsheets.update_players_score(player_cells)
-
-    player_cells = []
-    log.info("Rank:")
-    num = 1
+    rank = 1
     while heap:
-        node = heapq.heappop(heap).val
-        log.info("{0}: {1}".format(num, node.get_name()))
-        cell = player_cell_map[node.get_id()]
-        player_cells.append(Cell(row=cell.row, col=cell.col + 5, value=num))
-        gsheets.reset_row_highlight(cell.row)
+        player = heapq.heappop(heap).val
 
-        if num < 4:
-            # Highlight the top 3
-            gsheets.highlight_row(cell.row, "yellow")
-        if not heap:
-            # Highlight the last one (pays double)
-            gsheets.highlight_row(cell.row, "red")
+        log.info("{0}: {1}".format(rank, player.get_name()))
+        data.append(
+            [
+                player.get_team_name(),
+                player.get_name(),
+                player.get_total_win(),
+                player.get_total_loss(),
+                player.get_total_draw(),
+                player.get_total_h2h_points(),
+                rank
+            ]
+        )
+        rank += 1
 
-        num += 1
-
-    gsheets.update_players_score(player_cells)
+    gsheets.update_rank_table(data=data)
     return True
+
+
+# def update_google_rank_sheet(player_map, gsheets):
+#    """
+#    Update Head-to-Head player rank on Google sheets.
+#
+#    params:
+#        - player_map - Head-to-Head player map.
+#        - gsheets - Google sheets instance.
+#    """
+#    heap = []
+#    player_cell_map = dict()
+#
+#    player_cells = []
+#    for _, player in player_map.items():
+#        cell = gsheets.search_player(player.get_name())
+#        player_cell_map[player.get_id()] = cell
+#
+#        player_cells.append(Cell(row=cell.row, col=cell.col + 1,
+#                            value=player.get_total_win()))
+#        player_cells.append(Cell(row=cell.row, col=cell.col + 2,
+#                            value=player.get_total_loss()))
+#        player_cells.append(Cell(row=cell.row, col=cell.col + 3,
+#                            value=player.get_total_draw()))
+#        player_cells.append(Cell(row=cell.row, col=cell.col + 4,
+#                            value=player.get_total_h2h_points()))
+#        heapq.heappush(heap, Node(player))
+#
+#    gsheets.update_players_score(player_cells)
+#
+#    player_cells = []
+#    log.info("Rank:")
+#    num = 1
+#    while heap:
+#        node = heapq.heappop(heap).val
+#        log.info("{0}: {1}".format(num, node.get_name()))
+#        cell = player_cell_map[node.get_id()]
+#        player_cells.append(Cell(row=cell.row, col=cell.col + 5, value=num))
+#        gsheets.reset_row_highlight(cell.row)
+#
+#        if num < 4:
+#            # Highlight the top 3
+#            gsheets.highlight_row(cell.row, "yellow")
+#        if not heap:
+#            # Highlight the last one (pays double)
+#            gsheets.highlight_row(cell.row, "red")
+#
+#        num += 1
+#
+#    gsheets.update_players_score(player_cells)
+#    return True
 
 
 def create_players(h2h_league_fixtures):
@@ -135,6 +175,26 @@ def create_players(h2h_league_fixtures):
     return player_map
 
 
+def should_update(fpl_session):
+    if fpl_session.has_gameweek_been_updated():
+        log.info(
+            ("Gameweek points and rank have alreaady been "
+             "updated for gameweek: {0}").format(
+                 fpl_session.get_current_gameweek()
+             )
+        )
+        return False
+
+    if not fpl_session.is_current_gameweek_completed():
+        log.info(
+            ("Gameweek {0} data is not checked yet.").format(
+                fpl_session.get_current_gameweek())
+        )
+        return False
+
+    return True
+
+
 def main(argv):
 
     usage = ("{0} --config <file> ").format(__file__)
@@ -166,20 +226,7 @@ def main(argv):
 
     fpl_session = FPLSession(h2h_league_id=data['h2h_league_id'])
 
-    if fpl_session.has_gameweek_been_updated():
-        log.info(
-            ("Gameweek points and rank have alreaady been "
-             "updated for gameweek: {0}").format(
-                 fpl_session.get_current_gameweek()
-             )
-        )
-        sys.exit(0)
-
-    if not fpl_session.is_current_gameweek_completed():
-        log.info(
-            ("Gameweek {0} data is not checked yet.").format(
-                fpl_session.get_current_gameweek())
-        )
+    if not should_update(fpl_session):
         sys.exit(0)
 
     log.info("Current gameweek data is checked, update Google sheets")
@@ -203,7 +250,8 @@ def main(argv):
     # Update Rank Table
     if args.rank:
         gsheets.update_worksheet_num(num=2)
-        gameweek_rank_updated = update_google_rank_sheet(player_map, gsheets)
+        gameweek_rank_updated = update_google_rank_sheet(
+            fpl_session.get_current_gameweek(), player_map, gsheets)
 
     if gameweek_updated and gameweek_rank_updated:
         log.info(
