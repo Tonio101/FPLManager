@@ -1,5 +1,17 @@
 {
     "h2h_league_id": 123456,
     "creds_file": "<path_to_credentials_json_file>",
-    "google_sheets_file_name": "<google_sheet_name>"
+    "google_sheets_file_name": "<google_sheet_name>",
+    "gameweekdb_path": "<path_to_the_gameweek_file>",
+    "sms_info": {
+        "email": "",
+        "passw": "",
+        "sms": [
+            {
+                "gateway": "",
+                "server": "",
+                "port": 0
+            }
+        ]
+    }
 }

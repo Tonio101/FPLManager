@@ -1,3 +1,13 @@
+from enum import Enum
+
+
+class PlayerOutcome(Enum):
+    WIN = 0
+    LOSS = 1
+    DRAW = 2
+    INVALID = 3
+
+
 class FPLPlayer():
     """
     Object representation for an FPL Player
@@ -46,6 +56,12 @@ class FPLPlayer():
     def get_win(self, week):
         return self.win[week]
 
+    def get_loss(self, week):
+        return self.loss[week]
+
+    def get_draw(self, week):
+        return self.draw[week]
+
     def get_total_win(self):
         return sum(v for v in self.win.values())
 
@@ -60,6 +76,28 @@ class FPLPlayer():
 
     def get_total_points(self):
         return self.total_points
+
+    def is_winner(self, current_week):
+        return (self.get_current_week_outcome(current_week) ==
+                PlayerOutcome.WIN)
+
+    def is_loser(self, current_week):
+        return (self.get_current_week_outcome(current_week) ==
+                PlayerOutcome.LOSS)
+
+    def is_draw(self, current_week):
+        return (self.get_current_week_outcome(current_week) ==
+                PlayerOutcome.DRAW)
+
+    def get_current_week_outcome(self, current_week):
+        # Current week.
+        if self.get_win(week=current_week):
+            return PlayerOutcome.WIN
+        elif self.get_loss(week=current_week):
+            return PlayerOutcome.LOSS
+        elif self.get_draw(week=current_week):
+            return PlayerOutcome.DRAW
+        return PlayerOutcome.INVALID
 
     def __str__(self):
         to_str = ("{name} "
