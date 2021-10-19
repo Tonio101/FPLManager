@@ -38,6 +38,28 @@ class FPLSession():
             if gw and gw.is_next:
                 self.next_gameweek = gw.id
 
+    def is_valid_fixture(self, fixture):
+        fixture[0]['entry_1_loss']
+        if fixture is None or len(fixture) == 0:
+            log.error("Failed to retrieve H2H league fixture")
+            sys.exit(2)
+
+        for f in fixture:
+            if (
+                f['entry_1_win'] == 0 and
+                f['entry_1_loss'] == 0 and
+                f['entry_1_draw'] == 0
+               ) or \
+               (
+                f['entry_2_win'] == 0 and
+                f['entry_2_loss'] == 0 and
+                f['entry_2_draw'] == 0
+               ):
+                log.error(f)
+                return False
+
+        return True
+
     async def fpl_get_session(self):
         async with aiohttp.ClientSession() as session:
             self.fpl_session = FPL(session)
@@ -51,12 +73,23 @@ class FPLSession():
             #    await self.h2h_league.get_fixtures()
             for i in range(0, self.curr_gameweek):
                 gameweek = i + 1
-                # Workaround incase the other API does not have the latest info
-                # fixture = \
-                #   await self.h2h_league.get_fixture(
-                #       str(gameweek) + "&page=1"
-                #   )
-                fixture = await self.h2h_league.get_fixture(gameweek)
+                fixture = \
+                    await self.h2h_league.get_fixture(gameweek)
+                if not self.is_valid_fixture(fixture):
+                    log.info(("Failed to retrieve fixture data "
+                              "for gameweek {0}, retry...").format(
+                                  gameweek
+                              ))
+                    # Workaround incase the other API
+                    # does not have the latest info
+                    fixture = \
+                        await self.h2h_league.get_fixture(
+                            str(gameweek) + "&page=1"
+                        )
+                    if not self.is_valid_fixture(fixture):
+                        log.error("Failed to retrieve H2H league fixture")
+                        sys.exit(2)
+
                 self.h2h_league_all_fixtures.append(fixture)
 
     def fpl_get_h2h_league_fixtures(self):
