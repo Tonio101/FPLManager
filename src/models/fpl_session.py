@@ -50,8 +50,14 @@ class FPLSession():
             # self.h2h_league_all_fixtures = \
             #    await self.h2h_league.get_fixtures()
             for i in range(0, self.curr_gameweek):
-                self.h2h_league_all_fixtures.append(
-                    await self.h2h_league.get_fixture(gameweek=i + 1))
+                gameweek = i + 1
+                # Workaround incase the other API does not have the latest info
+                # fixture = \
+                #   await self.h2h_league.get_fixture(
+                #       str(gameweek) + "&page=1"
+                #   )
+                fixture = await self.h2h_league.get_fixture(gameweek)
+                self.h2h_league_all_fixtures.append(fixture)
 
     def fpl_get_h2h_league_fixtures(self):
         self.h2h_league_fixture_map = dict()
@@ -80,7 +86,7 @@ class FPLSession():
 
     def marked_gameweek_updated(self):
         with open(self.gameweeks_db, 'a') as db:
-            db.write(str(self.curr_gameweek))
+            db.write(str(self.curr_gameweek) + "\n")
 
     def is_current_gameweek_completed(self):
         gw_obj = self.gameweeks[self.curr_gameweek - 1]
