@@ -51,7 +51,7 @@ class FPLSession():
             #    await self.h2h_league.get_fixtures()
             for i in range(0, self.curr_gameweek):
                 self.h2h_league_all_fixtures.append(
-                    await self.h2h_league.get_fixtures(gameweek=i + 1))
+                    await self.h2h_league.get_fixture(gameweek=i + 1))
 
     def fpl_get_h2h_league_fixtures(self):
         self.h2h_league_fixture_map = dict()
