@@ -1,4 +1,8 @@
+import heapq
 import gspread
+
+from copy import deepcopy
+from models.logger import Logger
 
 from gspread_formatting.batch_update_requests import format_cell_range
 from oauth2client.service_account import ServiceAccountCredentials
@@ -6,6 +10,8 @@ from gspread_formatting import CellFormat, Color, TextFormat
 
 SCOPE = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
+
+log = Logger.getInstance().getLogger()
 
 
 class GoogleSheets():
@@ -32,10 +38,35 @@ class GoogleSheets():
     def update_worksheet_num(self, num):
         self.sheet_instance = self.sheet.get_worksheet(num)
 
-    def update_rank_table(self, start_cell='A2', data=[]):
-        if len(data) == 0:
-            return
-        self.sheet_instance.update(start_cell, data)
+    def update_rank_table(self, heap=[], start_cell='A2', data=[]):
+
+        if len(data) != 0:
+            self.sheet_instance.update(start_cell, data)
+        elif len(heap) != 0:
+            self.build_rank_table_data(heap)
+            self.sheet_instance.update(start_cell, self.ranked_data)
+
+    def build_rank_table_data(self, heap):
+        self.heap = deepcopy(heap)
+        self.ranked_data = []
+        rank = 1
+
+        while self.heap:
+            player = heapq.heappop(self.heap).val
+
+            log.info("{0}: {1}".format(rank, player.get_name()))
+            self.ranked_data.append(
+                [
+                    player.get_team_name(),
+                    player.get_name(),
+                    player.get_total_win(),
+                    player.get_total_loss(),
+                    player.get_total_draw(),
+                    player.get_total_h2h_points(),
+                    rank
+                ]
+            )
+            rank += 1
 
     def reset_row_highlight(self, row):
         fmt = CellFormat(

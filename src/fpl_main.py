@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import argparse
 import heapq
@@ -12,7 +12,8 @@ from models.fpl_player import FPLPlayer
 from models.fpl_session import FPLSession
 from models.google_sheets import GoogleSheets
 from models.heapnode import Node
-from models.sms_message import SMSMessage
+from models.sms_message import SmsNotifier
+from models.gcp_pubsub import GcpPubSubClient
 
 log = Logger.getInstance().getLogger()
 
@@ -46,113 +47,11 @@ def update_google_gameweek_sheet(gameweek, player_map, gsheets):
     return True
 
 
-def get_notification_message(fpl_session, heap):
-    """
-    Get SMS message for current week outcome.
-
-    params:
-        - fpl_session - FPL Session.
-        - heap - Head-to-Head player max heap.
-    """
-    winners = []
-    losers = []
-    draws = []
-    rank = 1
-    heap_copy = deepcopy(heap)
-    curr_gw = fpl_session.get_current_gameweek()
-    rank_str = ""
-    outcome_str = ""
-
-    while heap_copy:
-        player = heapq.heappop(heap_copy).val
-
-        name = player.get_name()
-        if player.is_winner(curr_gw):
-            winners.append(name)
-        elif player.is_loser(curr_gw):
-            losers.append(name)
-        elif player.is_draw(curr_gw):
-            draws.append(name)
-        else:
-            log.error("Invalid outcome")
-            exit(2)
-
-        rank_str += ("{0}. {1} "
-                     "{2}-{3}-{4} (W-D-L)\n").format(
-                        rank, name,
-                        player.get_total_win(),
-                        player.get_total_draw(),
-                        player.get_total_loss()
-                     )
-        rank += 1
-
-    if len(winners) > 0:
-        outcome_str += "Winners this week:\n"
-        for winner in winners:
-            outcome_str += ("{0}\n").format(winner)
-    if len(draws) > 0:
-        outcome_str += "Draw this week:\n"
-        for draw in draws:
-            outcome_str += ("{0}\n").format(draw)
-
-    return ("{winners}\n{rank}\n").format(
-        winners=outcome_str,
-        rank=rank_str
-    )
-
-
-def send_sms_notification(traitors, sms_message):
-    for traitor in traitors:
-        traitor.send_message(body=sms_message)
-
-
-def update_google_rank_sheet(fpl_session, player_map,
-                             gsheets, traitors):
-    """
-    Update Head-to-Head player rank on Google sheets.
-
-    params:
-        - fpl_session - FPL Session.
-        - player_map - Head-to-Head player map.
-        - gsheets - Google sheets instance.
-        - traitors - List of people to notify.
-    """
+def get_player_rank_heap(player_map):
     heap = []
-    data = []
-
-    log.info("Updating player rank {0}".format(
-        fpl_session.get_current_gameweek()
-    ))
-
     for _, player in player_map.items():
         heapq.heappush(heap, Node(player))
-
-    sms_message = get_notification_message(fpl_session, heap)
-
-    rank = 1
-    while heap:
-        player = heapq.heappop(heap).val
-
-        log.info("{0}: {1}".format(rank, player.get_name()))
-        data.append(
-            [
-                player.get_team_name(),
-                player.get_name(),
-                player.get_total_win(),
-                player.get_total_loss(),
-                player.get_total_draw(),
-                player.get_total_h2h_points(),
-                rank
-            ]
-        )
-        rank += 1
-
-    if UPDATE_GOOGLE_SHEETS:
-        gsheets.update_rank_table(data=data)
-
-    send_sms_notification(traitors, sms_message)
-    return True
-
+    return heap
 
 # def update_google_rank_sheet(player_map, gsheets):
 #    """
@@ -231,22 +130,22 @@ def create_players(h2h_league_fixtures):
                 entry_2_id = 'AVERAGE'
 
             if entry_1_id not in player_map:
-                player = FPLPlayer(id=entry_1_id,
-                                   name=h2h_league_fixture[e_1 + '_player_name'],
-                                   team_name=h2h_league_fixture[e_1 + '_name'])
+                player = \
+                    FPLPlayer(id=entry_1_id,
+                              name=h2h_league_fixture[e_1 + '_player_name'],
+                              team_name=h2h_league_fixture[e_1 + '_name'])
                 player_map[entry_1_id] = player
             if entry_2_id not in player_map:
-                player = FPLPlayer(id=entry_2_id,
-                                   name=h2h_league_fixture[e_2 + '_player_name'],
-                                   team_name=h2h_league_fixture[e_2 + '_name'])
+                player = \
+                    FPLPlayer(id=entry_2_id,
+                              name=h2h_league_fixture[e_2 + '_player_name'],
+                              team_name=h2h_league_fixture[e_2 + '_name'])
                 player_map[entry_2_id] = player
 
-            player_map[entry_1_id].populate_player_stats(week,
-                                                         h2h_league_fixture,
-                                                         e_1)
-            player_map[entry_2_id].populate_player_stats(week,
-                                                         h2h_league_fixture,
-                                                         e_2)
+            player_map[entry_1_id].populate_player_stats(
+                week, h2h_league_fixture, e_1)
+            player_map[entry_2_id].populate_player_stats(
+                week, h2h_league_fixture, e_2)
 
     return player_map
 
@@ -306,18 +205,14 @@ def main(argv):
     if not should_update(fpl_session):
         sys.exit(0)
 
-    list_of_people = []
-    for sms in data['sms_info']['sms']:
-        list_of_people.append(
-            SMSMessage(email=data['sms_info']['email'],
-                       pas=data['sms_info']['passw'],
-                       sms_gateway=sms['gateway'],
-                       smtp_server=sms['server'],
-                       smtp_port=sms['port'])
-        )
-
     log.info("Current gameweek data is checked, update Google sheets")
+
     gsheets = GoogleSheets(creds_fname=creds_file, fname=gsheets_fname)
+    sms_notifier = SmsNotifier(data)
+    pubsub_client = GcpPubSubClient(
+        project_id=data['gcp']['pubsub']['project_id'],
+        topic_id=data['gcp']['pubsub']['topic_id']
+    )
 
     h2h_league, h2h_league_fixtures = fpl_session.fpl_get_h2h_league_fixtures()
     log.info("%30s: %s\n" % ('Fantasy Premier League', h2h_league))
@@ -337,9 +232,19 @@ def main(argv):
     # Update Rank Table
     if args.rank:
         gsheets.update_worksheet_num(num=2)
-        gameweek_rank_updated = \
-            update_google_rank_sheet(fpl_session, player_map,
-                                     gsheets, list_of_people)
+
+        log.info("Updating player rank {0}".format(
+            fpl_session.get_current_gameweek()
+        ))
+
+        heap = get_player_rank_heap(player_map)
+
+        gsheets.update_rank_table(heap=heap)
+        sms_notifier.send(fpl_session, heap)
+        pubsub_client.publish(fpl_session, heap)
+
+        # TODO - Handle error code
+        gameweek_rank_updated = True
 
     if gameweek_updated and gameweek_rank_updated:
         log.info(

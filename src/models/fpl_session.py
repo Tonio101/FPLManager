@@ -20,12 +20,14 @@ class FPLSession():
         self.h2h_league = None
         self.h2h_league_fixtures = None
         self.h2h_league_all_fixtures = []
+        self.h2h_league_fixture_map = dict()
         self.curr_gameweek = 0
         self.next_gameweek = 0
         self.h2h_league_id = h2h_league_id
         self.gameweeks_db = gameweeks_db
         dbfile = Path(gameweeks_db)
         dbfile.touch(exist_ok=True)
+        self.fpl_fixtures_retrieve_method = 1
         asyncio.run(self.fpl_get_session())
 
     def get_current_gameweek(self):
@@ -38,27 +40,75 @@ class FPLSession():
             if gw and gw.is_next:
                 self.next_gameweek = gw.id
 
-    def is_valid_fixture(self, fixture):
-        fixture[0]['entry_1_loss']
-        if fixture is None or len(fixture) == 0:
+    def is_valid_gameweek_fixture(self, fixture):
+        if (
+            fixture['entry_1_win'] == 0 and
+            fixture['entry_1_loss'] == 0 and
+            fixture['entry_1_draw'] == 0
+           ) or \
+           (
+            fixture['entry_2_win'] == 0 and
+            fixture['entry_2_loss'] == 0 and
+            fixture['entry_2_draw'] == 0
+           ):
+            log.error(("Invalid fixture for gameweek {0}: {1}").format(
+                self.get_current_gameweek(), fixture
+            ))
+            return False
+        return True
+
+    def is_valid_fixtures(self, fixtures):
+        if fixtures is None or len(fixtures) == 0:
             log.error("Failed to retrieve H2H league fixture")
             sys.exit(2)
 
-        for f in fixture:
-            if (
-                f['entry_1_win'] == 0 and
-                f['entry_1_loss'] == 0 and
-                f['entry_1_draw'] == 0
-               ) or \
-               (
-                f['entry_2_win'] == 0 and
-                f['entry_2_loss'] == 0 and
-                f['entry_2_draw'] == 0
-               ):
-                log.error(f)
+        for fixture in fixtures:
+            if not self.is_valid_gameweek_fixture(fixture):
                 return False
 
         return True
+
+    async def fpl_get_fixtures(self):
+        list_of_fixtures = []
+        for i in range(0, self.curr_gameweek):
+            gameweek = i + 1
+            fixtures = await self.h2h_league.get_fixture(gameweek)
+            if not self.is_valid_fixtures(fixtures):
+                log.info(("\nFailed to retrieve fixture data "
+                          "for gameweek {0}, retry...\n").format(
+                              gameweek
+                          ))
+                # Workaround incase the other API
+                # does not have the latest info
+                fixtures = \
+                    await self.h2h_league.get_fixture(
+                        str(gameweek) + "&page=1"
+                    )
+                if not self.is_valid_fixtures(fixtures):
+                    log.error("\nInvalid H2H league fixture\n")
+                    # sys.exit(2)
+                    raise ValueError("Invalide H2H league fixtures")
+
+            list_of_fixtures.append(fixtures)
+
+        return list_of_fixtures
+
+    async def fpl_get_fixtures_2(self):
+        list_of_fixtures = []
+        all_fixtures = await self.h2h_league.get_fixtures()
+        for fixture in all_fixtures:
+            # We don't care about future events yet.
+            if fixture['event'] > self.curr_gameweek:
+                break
+
+            if not self.is_valid_gameweek_fixture(fixture):
+                log.info(("\nFailed to retrieve fixture data "
+                          "for gameweek, retry...\n"))
+                sys.exit(2)
+
+            list_of_fixtures.append(fixture)
+
+        return list_of_fixtures
 
     async def fpl_get_session(self):
         async with aiohttp.ClientSession() as session:
@@ -69,42 +119,39 @@ class FPLSession():
             self.set_current_gameweek()
             self.h2h_league = \
                 await self.fpl_session.get_h2h_league(self.h2h_league_id)
-            # self.h2h_league_all_fixtures = \
-            #    await self.h2h_league.get_fixtures()
-            for i in range(0, self.curr_gameweek):
-                gameweek = i + 1
-                fixture = \
-                    await self.h2h_league.get_fixture(gameweek)
-                if not self.is_valid_fixture(fixture):
-                    log.info(("Failed to retrieve fixture data "
-                              "for gameweek {0}, retry...").format(
-                                  gameweek
-                              ))
-                    # Workaround incase the other API
-                    # does not have the latest info
-                    fixture = \
-                        await self.h2h_league.get_fixture(
-                            str(gameweek) + "&page=1"
-                        )
-                    if not self.is_valid_fixture(fixture):
-                        log.error("Failed to retrieve H2H league fixture")
-                        sys.exit(2)
+            try:
+                self.h2h_league_all_fixtures = await self.fpl_get_fixtures()
+            except ValueError:
+                log.info(("Failed to retrieve game week data, "
+                          "try second method"))
+                self.h2h_league_all_fixtures = await self.fpl_get_fixtures_2()
+                self.fpl_fixtures_retrieve_method = 2
 
-                self.h2h_league_all_fixtures.append(fixture)
+            self.current_gameweek_data_valid = True
+
+    def build_h2h_league_fixture_map(self, h2h_league_fixtures):
+        for h2h_league_fixture in h2h_league_fixtures:
+            curr_week = h2h_league_fixture['event']
+            if curr_week > self.curr_gameweek:
+                continue
+
+            if curr_week not in self.h2h_league_fixture_map:
+                self.h2h_league_fixture_map[curr_week] = []
+
+            self.h2h_league_fixture_map[curr_week].append(
+                h2h_league_fixture)
 
     def fpl_get_h2h_league_fixtures(self):
-        self.h2h_league_fixture_map = dict()
-        for h2h_league_fixtures in self.h2h_league_all_fixtures:
-            for h2h_league_fixture in h2h_league_fixtures:
-                curr_week = h2h_league_fixture['event']
-                if curr_week > self.curr_gameweek:
-                    continue
+        if self.fpl_fixtures_retrieve_method == 1:
+            # List of lists
+            for h2h_league_fixtures in self.h2h_league_all_fixtures:
+                self.build_h2h_league_fixture_map(h2h_league_fixtures)
+        elif self.fpl_fixtures_retrieve_method == 2:
+            self.build_h2h_league_fixture_map(self.h2h_league_all_fixtures)
 
-                if curr_week not in self.h2h_league_fixture_map:
-                    self.h2h_league_fixture_map[curr_week] = []
-                self.h2h_league_fixture_map[curr_week].append(
-                    h2h_league_fixture)
-
+        log.info("Build H2H league info method {0}".format(
+            self.fpl_fixtures_retrieve_method
+        ))
         return self.h2h_league, self.h2h_league_fixture_map
 
     def has_gameweek_been_updated(self):
@@ -128,4 +175,5 @@ class FPLSession():
             log.error("Wrong gameweek!")
             sys.exit(2)
 
-        return (gw_obj.is_current and gw_obj.data_checked)
+        return ((gw_obj.is_current and gw_obj.data_checked) or
+                self.current_gameweek_data_valid)
