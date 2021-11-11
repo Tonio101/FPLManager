@@ -102,11 +102,51 @@ class FPLSession():
                 break
 
             if not self.is_valid_gameweek_fixture(fixture):
-                log.info(("\nFailed to retrieve fixture data "
-                          "for gameweek, retry...\n"))
-                sys.exit(2)
+                log.error("Invalid fixture: {0}".format(fixture))
+                log.error(("\n*** Failed to retrieve gameweek data ***\n"))
+                # sys.exit(2)
+                raise ValueError("Invalide H2H league fixtures")
 
             list_of_fixtures.append(fixture)
+
+        return list_of_fixtures
+
+    async def fpl_get_fixtures_3(self):
+        list_of_fixtures = []
+        for i in range(0, self.curr_gameweek):
+            gameweek = i + 1
+            fixtures = await self.h2h_league.get_fixture(gameweek)
+            if not self.is_valid_fixtures(fixtures):
+                log.info(("\nFailed to retrieve fixture data "
+                          "for gameweek {0}, retry...\n").format(
+                              gameweek
+                          ))
+                # Workaround incase the other APIs
+                # does not have the latest info
+                # Manually populate the win/loss/draw data
+                for i, fixture in enumerate(fixtures):
+                    player_1_points = fixture['entry_1_points']
+                    player_2_points = fixture['entry_2_points']
+
+                    if player_1_points == 0 or player_2_points == 0:
+                        log.error("\nInvalid H2H league fixture\n")
+                        sys.exit(2)
+
+                    if player_1_points > player_2_points:
+                        fixtures[i]['entry_1_win'] = 1
+                        fixtures[i]['entry_1_total'] = 3
+                        fixtures[i]['entry_2_loss'] = 1
+                    elif player_2_points > player_1_points:
+                        fixtures[i]['entry_2_win'] = 1
+                        fixtures[i]['entry_2_total'] = 3
+                        fixtures[i]['entry_1_loss'] = 1
+                    elif player_1_points == player_2_points:
+                        fixtures[i]['entry_1_draw'] = 1
+                        fixtures[i]['entry_2_draw'] = 1
+                        fixtures[i]['entry_1_total'] = 1
+                        fixtures[i]['entry_2_total'] = 1
+
+            list_of_fixtures.append(fixtures)
 
         return list_of_fixtures
 
@@ -124,8 +164,23 @@ class FPLSession():
             except ValueError:
                 log.info(("Failed to retrieve game week data, "
                           "try second method"))
-                self.h2h_league_all_fixtures = await self.fpl_get_fixtures_2()
-                self.fpl_fixtures_retrieve_method = 2
+                # TODO - Refactor
+                try:
+                    self.h2h_league_all_fixtures = \
+                        await self.fpl_get_fixtures_2()
+                    self.fpl_fixtures_retrieve_method = 2
+                except ValueError:
+                    log.info(("Failed to retrieve game week data, "
+                              "try third method"))
+
+                    # TODO - Check if this is required.
+                    if not self.is_gameweek_data_checked():
+                        self.current_gameweek_data_valid = False
+                        return
+
+                    self.h2h_league_all_fixtures = \
+                        await self.fpl_get_fixtures_3()
+                    self.fpl_fixtures_retrieve_method = 3
 
             self.current_gameweek_data_valid = True
 
@@ -142,7 +197,8 @@ class FPLSession():
                 h2h_league_fixture)
 
     def fpl_get_h2h_league_fixtures(self):
-        if self.fpl_fixtures_retrieve_method == 1:
+        if self.fpl_fixtures_retrieve_method == 1 or\
+           self.fpl_fixtures_retrieve_method == 3:
             # List of lists
             for h2h_league_fixtures in self.h2h_league_all_fixtures:
                 self.build_h2h_league_fixture_map(h2h_league_fixtures)
@@ -168,6 +224,15 @@ class FPLSession():
         with open(self.gameweeks_db, 'a') as db:
             db.write(str(self.curr_gameweek) + "\n")
 
+    def is_gameweek_data_checked(self):
+        gw_obj = self.gameweeks[self.curr_gameweek - 1]
+
+        if gw_obj.id != self.curr_gameweek:
+            log.error("Wrong gameweek!")
+            sys.exit(2)
+
+        return (gw_obj.is_current and gw_obj.data_checked)
+
     def is_current_gameweek_completed(self):
         gw_obj = self.gameweeks[self.curr_gameweek - 1]
 
@@ -175,5 +240,5 @@ class FPLSession():
             log.error("Wrong gameweek!")
             sys.exit(2)
 
-        return ((gw_obj.is_current and gw_obj.data_checked) or
+        return (self.is_gameweek_data_checked() or
                 self.current_gameweek_data_valid)

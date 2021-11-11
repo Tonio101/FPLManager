@@ -241,7 +241,7 @@ def main(argv):
 
         gsheets.update_rank_table(heap=heap)
         sms_notifier.send(fpl_session, heap)
-        pubsub_client.publish(fpl_session, heap)
+        #pubsub_client.publish(fpl_session, heap)
 
         # TODO - Handle error code
         gameweek_rank_updated = True
