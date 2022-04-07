@@ -5,7 +5,6 @@ import heapq
 import json
 import sys
 
-from copy import deepcopy
 from gspread.models import Cell
 from models.logger import Logger
 from models.fpl_player import FPLPlayer
@@ -241,7 +240,7 @@ def main(argv):
 
         gsheets.update_rank_table(heap=heap)
         sms_notifier.send(fpl_session, heap)
-        #pubsub_client.publish(fpl_session, heap)
+        pubsub_client.publish(fpl_session, heap)
 
         # TODO - Handle error code
         gameweek_rank_updated = True
