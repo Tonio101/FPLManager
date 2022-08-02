@@ -228,7 +228,7 @@ class FPLSession():
         gw_obj = self.gameweeks[self.curr_gameweek - 1]
 
         if gw_obj.id != self.curr_gameweek:
-            log.error("Wrong gameweek!")
+            log.error("is_gameweek_data_checked: Wrong gameweek!")
             sys.exit(2)
 
         return (gw_obj.is_current and gw_obj.data_checked)
@@ -237,7 +237,7 @@ class FPLSession():
         gw_obj = self.gameweeks[self.curr_gameweek - 1]
 
         if gw_obj.id != self.curr_gameweek:
-            log.error("Wrong gameweek!")
+            log.error("is_current_gameweek_completed: Wrong gameweek!")
             sys.exit(2)
 
         return (self.is_gameweek_data_checked() or
