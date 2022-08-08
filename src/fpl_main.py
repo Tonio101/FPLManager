@@ -207,7 +207,7 @@ def main(argv):
     log.info("Current gameweek data is checked, update Google sheets")
 
     gsheets = GoogleSheets(creds_fname=creds_file, fname=gsheets_fname)
-    sms_notifier = SmsNotifier(data)
+    # sms_notifier = SmsNotifier(data)
     pubsub_client = GcpPubSubClient(
         project_id=data['gcp']['pubsub']['project_id'],
         topic_id=data['gcp']['pubsub']['topic_id']
@@ -239,7 +239,7 @@ def main(argv):
         heap = get_player_rank_heap(player_map)
 
         gsheets.update_rank_table(heap=heap)
-        sms_notifier.send(fpl_session, heap)
+        # sms_notifier.send(fpl_session, heap)
         pubsub_client.publish(fpl_session, heap)
 
         # TODO - Handle error code
