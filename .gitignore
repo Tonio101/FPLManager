@@ -130,3 +130,11 @@ dmypy.json
 
 # ctags
 tags
+
+# Local test file
+src/fpl_config_test.json
+
+# file that contains updated gameweek
+gameweek.db
+src/gameweek.db
+

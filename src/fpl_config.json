@@ -1,0 +1,28 @@
+{
+    "feature": {
+        "google_sheets_enable": true,
+        "sms_enable": false,
+        "gcp_pubsub_enable": true
+    },
+    "h2h_league_id": 123456,
+    "creds_file": "<path_to_credentials_json_file>",
+    "google_sheets_file_name": "<google_sheet_name>",
+    "gameweekdb_path": "<path_to_the_gameweek_file>",
+    "sms_info": {
+        "email": "",
+        "passw": "",
+        "sms": [
+            {
+                "gateway": "",
+                "server": "",
+                "port": 0
+            }
+        ]
+    },
+    "gcp": {
+        "pubsub": {
+            "project_id": "<your_project_id>",
+            "topic_id": "<your_project_topic_id>"
+        }
+    }
+}
