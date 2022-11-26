@@ -88,7 +88,6 @@ class FPLSession():
                     log.error("\nInvalid H2H league fixture\n")
                     # sys.exit(2)
                     raise ValueError("Invalide H2H league fixtures")
-
             list_of_fixtures.append(fixtures)
 
         return list_of_fixtures
@@ -105,8 +104,7 @@ class FPLSession():
                 log.error("Invalid fixture: {0}".format(fixture))
                 log.error(("\n*** Failed to retrieve gameweek data ***\n"))
                 # sys.exit(2)
-                raise ValueError("Invalide H2H league fixtures")
-
+                raise ValueError("Invalid H2H league fixtures")
             list_of_fixtures.append(fixture)
 
         return list_of_fixtures
