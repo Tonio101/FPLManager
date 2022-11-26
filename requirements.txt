@@ -1,1 +1,5 @@
 fpl
+gspread
+gspread_formatting
+oauth2client
+google-cloud-pubsub

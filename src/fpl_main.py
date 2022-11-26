@@ -6,7 +6,8 @@ import json
 import sys
 import os
 
-from gspread.models import Cell
+# from gspread.models import Cell
+from gspread.cell import Cell
 from models.logger import Logger
 from models.fpl_player import FPLPlayer
 from models.fpl_session import FPLSession
@@ -43,6 +44,11 @@ def update_google_gameweek_sheet(gameweek, player_map, gsheets):
 
     if UPDATE_GOOGLE_SHEETS:
         gsheets.update_players_score(player_cells)
+    else:
+        for cell in player_cells:
+            log.info("{}".format(
+                cell
+            ))
 
     return True
 
@@ -52,56 +58,6 @@ def get_player_rank_heap(player_map):
     for _, player in player_map.items():
         heapq.heappush(heap, Node(player))
     return heap
-
-# def update_google_rank_sheet(player_map, gsheets):
-#    """
-#    Update Head-to-Head player rank on Google sheets.
-#
-#    params:
-#        - player_map - Head-to-Head player map.
-#        - gsheets - Google sheets instance.
-#    """
-#    heap = []
-#    player_cell_map = dict()
-#
-#    player_cells = []
-#    for _, player in player_map.items():
-#        cell = gsheets.search_player(player.get_name())
-#        player_cell_map[player.get_id()] = cell
-#
-#        player_cells.append(Cell(row=cell.row, col=cell.col + 1,
-#                            value=player.get_total_win()))
-#        player_cells.append(Cell(row=cell.row, col=cell.col + 2,
-#                            value=player.get_total_loss()))
-#        player_cells.append(Cell(row=cell.row, col=cell.col + 3,
-#                            value=player.get_total_draw()))
-#        player_cells.append(Cell(row=cell.row, col=cell.col + 4,
-#                            value=player.get_total_h2h_points()))
-#        heapq.heappush(heap, Node(player))
-#
-#    gsheets.update_players_score(player_cells)
-#
-#    player_cells = []
-#    log.info("Rank:")
-#    num = 1
-#    while heap:
-#        node = heapq.heappop(heap).val
-#        log.info("{0}: {1}".format(num, node.get_name()))
-#        cell = player_cell_map[node.get_id()]
-#        player_cells.append(Cell(row=cell.row, col=cell.col + 5, value=num))
-#        gsheets.reset_row_highlight(cell.row)
-#
-#        if num < 4:
-#            # Highlight the top 3
-#            gsheets.highlight_row(cell.row, "yellow")
-#        if not heap:
-#            # Highlight the last one (pays double)
-#            gsheets.highlight_row(cell.row, "red")
-#
-#        num += 1
-#
-#    gsheets.update_players_score(player_cells)
-#    return True
 
 
 def create_players(h2h_league_fixtures):
