@@ -87,8 +87,7 @@ class FPLSession():
                 if not self.is_valid_fixtures(fixtures):
                     log.error("\nInvalid H2H league fixture\n")
                     # sys.exit(2)
-                    raise ValueError("Invalid H2H league fixtures")
-
+                    raise ValueError("Invalide H2H league fixtures")
             list_of_fixtures.append(fixtures)
 
         return list_of_fixtures
@@ -106,7 +105,6 @@ class FPLSession():
                 log.error(("\n*** Failed to retrieve gameweek data ***\n"))
                 # sys.exit(2)
                 raise ValueError("Invalid H2H league fixtures")
-
             list_of_fixtures.append(fixture)
 
         return list_of_fixtures
