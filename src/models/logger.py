@@ -3,8 +3,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 FILE = '/tmp/fpl_manager.log'
-FILE_MAXSIZE = 10 * 1024 * 1024  # 10MB
-FILE_BACKUP_CNT = 2
+FILE_MAXSIZE = 1 * 1024 * 1024  # 10MB
+FILE_BACKUP_CNT = 1
 LOG_FORMAT = '%(asctime)s:%(module)s:%(levelname)s - %(message)s'
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -22,7 +22,7 @@ class SingletonType(type):
 class Logger(object, metaclass=SingletonType):
     # __metaclass__ = SingletonType   # python 2 Style
 
-    def __init__(self, name='FPL', fname=FILE,
+    def __init__(self, name='FPLManager', fname=FILE,
                  maxBytes=FILE_MAXSIZE, backupCount=FILE_BACKUP_CNT):
 
         self.logger = logging.getLogger(name)

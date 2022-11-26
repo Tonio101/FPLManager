@@ -4,6 +4,7 @@ import argparse
 import heapq
 import json
 import sys
+import os
 
 from gspread.models import Cell
 from models.logger import Logger
@@ -205,6 +206,7 @@ def main(argv):
         sys.exit(0)
 
     log.info("Current gameweek data is checked, update Google sheets")
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = creds_file
 
     gsheets = GoogleSheets(creds_fname=creds_file, fname=gsheets_fname)
     # sms_notifier = SmsNotifier(data)

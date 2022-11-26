@@ -9,6 +9,6 @@ SRC_DIR=${TOP_DIR}/src
 source ${TOP_DIR}/.env
 
 SCRIPT=${SRC_DIR}/fpl_main.py
-ARGS="--config ${SRC_DIR}/fpl_config_test.json --gameweek --rank"
+ARGS="--config ${SRC_DIR}/fpl_config.local.json --gameweek --rank"
 
 $FLOCK  --verbose --exclusive $LOCK_FILE --command "$SCRIPT $ARGS"
