@@ -18,7 +18,7 @@ from models.gcp_pubsub import GcpPubSubClient
 
 log = Logger.getInstance().getLogger()
 
-# Debug flag to avoid writing to Googlse sheets for dev.
+# Debug flag to avoid writing to Google sheets for dev.
 UPDATE_GOOGLE_SHEETS = True
 
 
@@ -188,7 +188,7 @@ def main(argv):
             fpl_session.get_current_gameweek(), player_map, gsheets)
     # Update Rank Table
     if args.rank:
-        gsheets.update_worksheet_num(num=2)
+        gsheets.update_worksheet_num(num=1)
 
         log.info("Updating player rank {0}".format(
             fpl_session.get_current_gameweek()

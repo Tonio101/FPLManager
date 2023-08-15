@@ -12,3 +12,4 @@ SCRIPT=${SRC_DIR}/fpl_main.py
 ARGS="--config ${SRC_DIR}/fpl_config.local.json --gameweek --rank"
 
 $FLOCK  --verbose --exclusive $LOCK_FILE --command "$SCRIPT $ARGS"
+

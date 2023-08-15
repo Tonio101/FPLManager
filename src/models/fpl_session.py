@@ -2,7 +2,8 @@ import sys
 import aiohttp
 import asyncio
 
-from fpl import FPL
+# from fpl import FPL
+from fpl.fpl import FPL
 from models.logger import Logger
 from pathlib import Path
 

@@ -20,8 +20,9 @@ class GoogleSheets():
     """
 
     def __init__(self, creds_fname, fname, worksheet_num=0):
-        creds = ServiceAccountCredentials.from_json_keyfile_name(creds_fname,
-                                                                 SCOPE)
+        creds = \
+            ServiceAccountCredentials.from_json_keyfile_name(creds_fname,
+                                                             SCOPE)
         client = gspread.authorize(creds)
         self.sheet = client.open(fname)
         self.sheet_instance = self.sheet.get_worksheet(worksheet_num)
@@ -92,7 +93,7 @@ class GoogleSheets():
             # horizontalAlignment='CENTER'
         )
 
-        format_cell_range(self.sheet_instance, str(row), fmt)    
+        format_cell_range(self.sheet_instance, str(row), fmt)
 
     def highlight_cell(self, row, col, cell_color="white"):
         cell_color = Color(1, 1, 1)
