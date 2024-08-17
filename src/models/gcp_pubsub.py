@@ -1,7 +1,8 @@
 import heapq
-
 from copy import deepcopy
+
 from google.cloud import pubsub_v1
+
 from models.logger import Logger
 
 log = Logger.getInstance().getLogger()
@@ -13,11 +14,11 @@ class GcpPubSubClient(object):
     Args:
         object ([type]): [description]
     """
+
     def __init__(self, project_id, topic_id):
         self.project_id = project_id
         self.topic_id = topic_id
-        self.publisher = \
-            pubsub_v1.PublisherClient()
+        self.publisher = pubsub_v1.PublisherClient()
 
         # The `topic_path` method creates a fully qualified
         # identifier in the form
@@ -26,7 +27,7 @@ class GcpPubSubClient(object):
 
     def publish(self, fpl_session, heap):
         message = self.build_pubsub_message(fpl_session, heap)
-        log.info(message)
+        log.info("\n\n\nMessage: {}".format(message))
         self.publish_message(data=message)
 
     def publish_message(self, data):
@@ -36,15 +37,6 @@ class GcpPubSubClient(object):
         log.debug("Published message to {0}".format(self.topic_path))
 
     def build_pubsub_message(self, fpl_session, heap):
-        """[summary]
-
-        Args:
-            fpl_session ([type]): [description]
-            heap ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
         winners = []
         losers = []
         draws = []
@@ -68,10 +60,7 @@ class GcpPubSubClient(object):
                 log.error("Invalid outcome")
                 exit(2)
 
-            rank_str += ("{0} place {1}.").format(
-                self.get_rank_str(rank),
-                name
-            )
+            rank_str += ("{0} place {1}.").format(self.get_rank_str(rank), name)
             rank += 1
 
         if len(winners) > 0:
@@ -83,10 +72,11 @@ class GcpPubSubClient(object):
             for draw in draws:
                 outcome_str += ("{0}.").format(draw)
 
-        return ("{winners}:{rank}.").format(
-            winners=outcome_str,
-            rank=rank_str
-        ).encode('utf-8')
+        return (
+            ("{winners}:{rank}.")
+            .format(winners=outcome_str, rank=rank_str)
+            .encode("utf-8")
+        )
 
     def get_rank_str(self, rank):
         if rank == 1:

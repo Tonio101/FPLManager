@@ -11,5 +11,6 @@ source ${TOP_DIR}/.env
 SCRIPT=${SRC_DIR}/fpl_main.py
 ARGS="--config ${SRC_DIR}/fpl_config.local.json --gameweek --rank"
 
-$FLOCK  --verbose --exclusive $LOCK_FILE --command "$SCRIPT $ARGS"
+#$FLOCK  --verbose --exclusive $LOCK_FILE --command "$SCRIPT $ARGS"
+$SCRIPT $ARGS
 
