@@ -5,19 +5,21 @@ import re
 import secrets
 import uuid
 
-import requests
+from curl_cffi import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
+CLIENT_ID = "bfcbaf69-aade-4c1b-8f00-c1cb8a193030"
 URLS = {
     "auth": "https://account.premierleague.com/as/authorize",
     "start": "https://account.premierleague.com/davinci/policy/262ce4b01d19dd9d385d26bddb4297b6/start",
-    "login": "https://account.premierleague.com/davinci/connections/0d8c928e4970386733ce110b9dda8412/capabilities/customHTMLTemplate",
+    "login": "https://account.premierleague.com/davinci/connections/{}/capabilities/customHTMLTemplate",
     "resume": "https://account.premierleague.com/as/resume",
     "token": "https://account.premierleague.com/as/token",
     "me": "https://fantasy.premierleague.com/api/me/",
 }
+STANDARD_CONNECTION_ID = "0d8c928e4970386733ce110b9dda8412"
 
 
 def generate_code_verifier():
@@ -35,7 +37,7 @@ code_challenge = generate_code_challenge(
 )  # code_challenge from the code_verifier
 initial_state = uuid.uuid4().hex  # random initial state for the OAuth flow
 
-session = requests.Session()
+session = requests.Session(impersonate="chrome124")
 
 # Step 1: Request authorization page
 params = {
@@ -66,10 +68,9 @@ response = session.post(URLS["start"], headers=headers).json()
 interaction_id = response["interactionId"]
 interaction_token = response["interactionToken"]
 
-
-# Step 3: log in with interaction tokens (requires 2 post requests)
+# Step 3: log in with interaction tokens (requires 3 post requests)
 response = session.post(
-    URLS["login"],
+    URLS["login"].format(STANDARD_CONNECTION_ID),
     headers={
         "interactionId": interaction_id,
         "interactionToken": interaction_token,
@@ -88,7 +89,7 @@ response = session.post(
 )
 
 response = session.post(
-    URLS["login"],
+    URLS["login"].format(STANDARD_CONNECTION_ID),
     headers={
         "interactionId": interaction_id,
         "interactionToken": interaction_token,
@@ -105,20 +106,40 @@ response = session.post(
         "parameters": {
             "buttonType": "form-submit",
             "buttonValue": "SIGNON",
-            "username": os.getenv("FPL_EMAIL"),
-            "password": os.getenv("FPL_PASSWORD"),
+            "username": os.getenv("EMAIL"),
+            "password": os.getenv("PASSWORD"),
+        },
+        "eventName": "continue",
+    },
+).json()
+
+response = session.post(
+    URLS["login"].format(
+        response["connectionId"]
+    ),  # need to use new connectionId from prev response
+    headers=headers,
+    json={
+        "id": response["id"],
+        "nextEvent": {
+            "constructType": "skEvent",
+            "eventName": "continue",
+            "params": [],
+            "eventType": "post",
+            "postProcess": {},
+        },
+        "parameters": {
+            "buttonType": "form-submit",
+            "buttonValue": "SIGNON",
         },
         "eventName": "continue",
     },
 )
-dv_response = response.json()["dvResponse"]
-
 
 # Step 4: Resume the login using the dv_response and handle redirect
 response = session.post(
     URLS["resume"],
     data={
-        "dvResponse": dv_response,
+        "dvResponse": response.json()["dvResponse"],
         "state": new_state,
     },
     allow_redirects=False,
