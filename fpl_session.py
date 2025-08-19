@@ -94,10 +94,15 @@ class FPLSession:
     # ------------------ Fixtures Retrieval Methods ------------------
 
     async def fpl_fixtures_info(self):
-        local_gameweek = self.curr_gameweek + 1
+        local_gameweek = 1
         fixtures = await self.h2h_league.get_fixture(local_gameweek)
         for fixture in fixtures:
-            log.info(fixture)
+            home_team = fixture["entry_1_name"]
+            home_player = fixture["entry_1_player_name"]
+            away_team = fixture["entry_2_name"]
+            away_player = fixture["entry_2_player_name"]
+            print(f"{home_team},{home_player}")
+            print(f"{away_team},{away_player}")
 
     async def fpl_get_fixtures(self):
         all_fixtures = []
@@ -191,7 +196,7 @@ class FPLSession:
         self.gameweeks = await self.fpl_session.get_gameweeks()
         self.set_current_gameweek()
         self.h2h_league = await self.fpl_session.get_h2h_league(self.h2h_league_id)
-        await self.fpl_fixtures_info()
+        # await self.fpl_fixtures_info()
 
         try:
             self.h2h_league_all_fixtures = await self.fpl_get_fixtures()

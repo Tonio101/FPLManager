@@ -88,7 +88,7 @@ def create_players(h2h_league_fixtures):
     return player_map
 
 
-def should_update(fpl_session):
+def should_update(fpl_session: FPLSession):
     """
     Determine whether Google Sheets should be updated for this gameweek.
     """

@@ -60,7 +60,7 @@ class GcpPubSubClient(object):
                 log.error("Invalid outcome")
                 exit(2)
 
-            rank_str += ("{0} place {1}.").format(self.get_rank_str(rank), name)
+            rank_str += ('"{0}" place {1}.').format(self.get_rank_str(rank), name)
             rank += 1
 
         if len(winners) > 0:
@@ -102,7 +102,7 @@ class GcpPubSubClient(object):
         elif rank == 11:
             return "Eleventh"
         elif rank == 12:
-            return "Twelveth"
+            return "Twelve"
         elif rank == 13:
             return "Thirteenth"
         elif rank == 14:
