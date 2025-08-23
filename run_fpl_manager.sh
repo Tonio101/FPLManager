@@ -4,7 +4,7 @@ FLOCK=/usr/bin/flock
 LOCK_FILE=/tmp/fplmanager.lockfile
 
 TOP_DIR=${HOME}/FPLManager
-SRC_DIR=${TOP_DIR}/src
+SRC_DIR=${TOP_DIR}
 
 source ${TOP_DIR}/.env
 
